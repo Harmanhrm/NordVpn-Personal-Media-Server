@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  nordvpn:
+    image: azinchen/nordvpn:latest
+    container_name: nordvpn
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - USER=${NORDVPN_USERNAME}
+      - PASS=${NORDVPN_PASSWORD}
+      - COUNTRY=Australia
+      - NETWORK=${LOCAL_NETWORK}
+      - OPENVPN_OPTS=--mute-replay-warnings
+    ports:
+      - "8080:8080"   # qBittorrent
+      - "9117:9696"   # Prowlarr
+      - "8989:8989"   # Sonarr
+      - "7878:7878"   # Radarr
+      - "5055:5055"   # Jellyseerr
+      - "8096:8096"   # Jellyfin
+      - "9000:9000"   # Portainer
+      - "9443:9443"   # Portainer HTTPS
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:nordvpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    volumes:
+      - ./config/qbittorrent:/config
+      - ./media/downloads:/downloads
+      - ./media:/media
+    depends_on:
+      - nordvpn
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: "service:nordvpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/prowlarr:/config
+    depends_on:
+      - nordvpn
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    network_mode: "service:nordvpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/sonarr:/config
+      - ./media/tv:/tv
+      - ./media/downloads:/downloads
+    depends_on:
+      - nordvpn
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: "service:nordvpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/radarr:/config
+      - ./media/movies:/movies
+      - ./media/downloads:/downloads
+    depends_on:
+      - nordvpn
+    restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    network_mode: "service:nordvpn"
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=${TZ}
+    volumes:
+      - ./config/jellyseerr:/app/config
+    depends_on:
+      - nordvpn
+    restart: unless-stopped
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    network_mode: "service:nordvpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/jellyfin:/config
+      - ./media/tv:/data/tvshows
+      - ./media/movies:/data/movies
+    depends_on:
+      - nordvpn
+    restart: unless-stopped
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    network_mode: "service:nordvpn"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    depends_on:
+      - nordvpn
+    restart: unless-stopped
+
+volumes:
+  portainer_data:
