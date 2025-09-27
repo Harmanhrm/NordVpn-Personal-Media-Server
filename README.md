@@ -1,144 +1,186 @@
-# GitHub Repository Structure for NordVPN Media Stack
+# Complete NordVPN Media Stack Repository
 
-## Repository Files to Create
+## README.md
+```markdown
+# NordVPN Media Stack
 
-### 1. `docker-compose.yml`
-```yaml
-version: '3.8'
+**Stop paying for multiple streaming subscriptions. Build your own Netflix in 30 minutes.**
 
-services:
-  nordvpn:
-    image: azinchen/nordvpn:latest
-    container_name: nordvpn
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun
-    environment:
-      - USER=YOUR_NORDVPN_USERNAME
-      - PASS=YOUR_NORDVPN_PASSWORD
-      - COUNTRY=Australia
-      - NETWORK=192.168.0.0/24
-      - OPENVPN_OPTS=--mute-replay-warnings
-    ports:
-      - "8080:8080"   # qBittorrent
-      - "9117:9696"   # Prowlarr (mapped to 9117 externally)
-      - "8989:8989"   # Sonarr
-      - "7878:7878"   # Radarr
-      - "5055:5055"   # Jellyseerr
-      - "8096:8096"   # Jellyfin
-      - "9000:9000"   # Portainer
-      - "9443:9443"   # Portainer HTTPS
-    restart: unless-stopped
+One-command setup for a complete automated media server with torrent privacy protection.
 
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    network_mode: "service:nordvpn"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Australia/Sydney
-      - WEBUI_PORT=8080
-    volumes:
-      - ./config/qbittorrent:/config
-      - ./media/downloads:/downloads
-      - ./media:/media
-    depends_on:
-      - nordvpn
-    restart: unless-stopped
+## What You Get
 
-  prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
-    container_name: prowlarr
-    network_mode: "service:nordvpn"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Australia/Sydney
-    volumes:
-      - ./config/prowlarr:/config
-    depends_on:
-      - nordvpn
-    restart: unless-stopped
+- **Request Interface**: Ask for any movie/show through a web interface
+- **Automatic Downloads**: System finds and downloads content automatically  
+- **Personal Netflix**: Stream everything through your own media server
+- **Complete Privacy**: All torrent traffic routed through NordVPN
 
-  sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
-    container_name: sonarr
-    network_mode: "service:nordvpn"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Australia/Sydney
-    volumes:
-      - ./config/sonarr:/config
-      - ./media/tv:/tv
-      - ./media/downloads:/downloads
-    depends_on:
-      - nordvpn
-    restart: unless-stopped
+## Requirements
 
-  radarr:
-    image: lscr.io/linuxserver/radarr:latest
-    container_name: radarr
-    network_mode: "service:nordvpn"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Australia/Sydney
-    volumes:
-      - ./config/radarr:/config
-      - ./media/movies:/movies
-      - ./media/downloads:/downloads
-    depends_on:
-      - nordvpn
-    restart: unless-stopped
+**Hardware**: Any laptop, desktop, or server with:
+- 4GB+ RAM  
+- 500GB+ storage
+- Ethernet connection (WiFi will be slow)
 
-  jellyseerr:
-    image: fallenbagel/jellyseerr:latest
-    container_name: jellyseerr
-    network_mode: "service:nordvpn"
-    environment:
-      - LOG_LEVEL=debug
-      - TZ=Australia/Sydney
-    volumes:
-      - ./config/jellyseerr:/app/config
-    depends_on:
-      - nordvpn
-    restart: unless-stopped
+**Software**: Linux with Docker
+- Don't have Linux? → [Ubuntu Server Setup Guide](https://ubuntu.com/server/docs/installation)  
+- Already have Ubuntu/Debian/etc? → You're ready to go
 
-  jellyfin:
-    image: lscr.io/linuxserver/jellyfin:latest
-    container_name: jellyfin
-    network_mode: "service:nordvpn"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Australia/Sydney
-    volumes:
-      - ./config/jellyfin:/config
-      - ./media/tv:/data/tvshows
-      - ./media/movies:/data/movies
-    depends_on:
-      - nordvpn
-    restart: unless-stopped
+**Subscriptions**: 
+- NordVPN account ([get service credentials here](https://my.nordaccount.com/dashboard/nordvpn/manual-setup/))
 
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    network_mode: "service:nordvpn"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    depends_on:
-      - nordvpn
-    restart: unless-stopped
+## Quick Start
 
-volumes:
-  portainer_data:
+### 1. Find Your Server IP
+```bash
+# Get your server's local IP address
+hostname -I | awk '{print $1}'
+# Example output: 192.168.0.167
 ```
 
-### 2. `.env.example`
+### 2. Install Docker (if not installed)
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+```
+**Log out and back in after this step**
+
+### 3. Create Setup Directory
+```bash
+mkdir -p ~/mediastack && cd ~/mediastack
+mkdir -p ./media/{downloads,movies,tv}
+```
+
+### 4. Download Configuration
+```bash
+# Option A: Use automated setup script (recommended)
+curl -O https://raw.githubusercontent.com/Harmanhrm/NordVpn-Personal-Media-Server/main/setup.sh
+chmod +x setup.sh
+./setup.sh
+
+# Option B: Manual setup
+curl -O https://raw.githubusercontent.com/Harmanhrm/NordVpn-Personal-Media-Server/main/docker-compose.yml
+```
+
+### 5. Add Your NordVPN Credentials
+
+**Option A: Using .env file (recommended)**
+```bash
+# Download environment template
+curl -O https://raw.githubusercontent.com/Harmanhrm/NordVpn-Personal-Media-Server/main/.env.example
+cp .env.example .env
+nano .env
+```
+
+**Option B: Direct editing**
+```bash
+# Edit the docker-compose.yml file directly
+nano docker-compose.yml
+```
+Replace these lines:
+- `USER=YOUR_NORDVPN_USERNAME` → Your NordVPN service username
+- `PASS=YOUR_NORDVPN_PASSWORD` → Your NordVPN service password  
+- `NETWORK=192.168.0.0/24` → Your network range (most home networks use this)
+
+### 6. Launch Everything
+```bash
+docker-compose up -d
+```
+
+### 7. Verify VPN Protection
+```bash
+# Check that downloads are protected by VPN
+docker exec qbittorrent curl -s ifconfig.me
+# Should show an Australian IP, NOT your real IP
+```
+
+## Access Your Services
+
+Replace `192.168.0.167` with your server's IP from step 1:
+
+**Daily Use:**
+- **Request Movies/Shows**: http://192.168.0.167:5055
+- **Watch Content**: http://192.168.0.167:8096
+
+**One-Time Setup** (configure these once):
+- **Download Client**: http://192.168.0.167:8080
+- **TV Manager**: http://192.168.0.167:8989  
+- **Movie Manager**: http://192.168.0.167:7878
+- **Indexer Manager**: http://192.168.0.167:9117
+- **System Admin**: http://192.168.0.167:9000 (optional - can be removed)
+
+## First-Time Configuration
+
+1. **qBittorrent** (8080): Change password from `admin`/`adminadmin`
+2. **Prowlarr** (9117): Add indexers (torrent sites)
+3. **Sonarr** (8989) & **Radarr** (7878): Connect to qBittorrent and Prowlarr using **internal IP addresses**
+4. **Jellyfin** (8096): Add media libraries - if you get sync errors, recreate the container and ensure Jellyfin has folder access
+5. **Jellyseerr** (5055): Connect to Sonarr, Radarr, and Jellyfin using **internal IP addresses**
+
+⚠️ **Important**: When connecting services together, always use your server's **internal IP address** (e.g., `192.168.0.167`), not `localhost` or `127.0.0.1`
+
+[Detailed setup instructions →](SETUP.md)
+
+## How It Works
+
+1. You request content in Jellyseerr
+2. System automatically finds and downloads via VPN
+3. Files are organized and made available in Jellyfin
+4. You watch on any device
+
+All torrent traffic goes through NordVPN. Management interfaces stay local for speed.
+
+**Note**: Portainer (System Admin) is optional and can be removed from the docker-compose.yml if you don't need container management.
+
+## Troubleshooting
+
+**Can't access services?**
+```bash
+# Check if containers are running
+docker ps
+
+# Check your network settings in docker-compose.yml
+# Most home networks use 192.168.0.0/24 or 192.168.1.0/24
+```
+
+**VPN not working?**
+```bash
+# Check VPN connection
+docker logs nordvpn
+
+# Verify you're using SERVICE credentials from NordVPN dashboard
+# NOT your regular login email/password
+```
+
+**Services won't start?**
+```bash
+# View detailed logs
+docker-compose logs
+```
+
+**Jellyfin sync errors?**
+```bash
+# Recreate Jellyfin container and ensure folder permissions
+docker-compose down
+sudo chown -R 1000:1000 ./media
+docker-compose up -d jellyfin
+```
+
+## Files
+
+- `docker-compose.yml` - Main configuration file
+- `SETUP.md` - Detailed setup instructions  
+- `TROUBLESHOOTING.md` - Common issues and solutions
+
+---
+
+**Legal**: Educational purposes only. Respect copyright laws and only download content you legally own.
+
+**Questions?** Open an issue or check existing discussions.
+```
+
+## .env.example
 ```bash
 # NordVPN Credentials (get from https://my.nordaccount.com/dashboard/nordvpn/)
 NORDVPN_USERNAME=YOUR_NORDVPN_USERNAME
@@ -156,7 +198,7 @@ PUID=1000
 PGID=1000
 ```
 
-### 3. `setup.sh`
+## setup.sh
 ```bash
 #!/bin/bash
 
@@ -229,7 +271,7 @@ echo "   docker exec qbittorrent curl -s ifconfig.me"
 echo "   (Should show Australian IP, not your real IP)"
 ```
 
-### 4. `SETUP.md`
+## SETUP.md
 ```markdown
 # Detailed Setup Instructions
 
@@ -325,243 +367,3 @@ docker exec qbittorrent curl -s ifconfig.me
    - TV Shows: `/data/tvshows`
 3. Configure metadata providers
 4. **If sync errors occur**: Stop container, fix permissions, recreate container
-
-### Jellyseerr (Port 5055)
-1. Connect to Jellyfin server using `http://YOUR_SERVER_IP:8096`
-2. Add Sonarr: `http://YOUR_SERVER_IP:8989`
-3. Add Radarr: `http://YOUR_SERVER_IP:7878`
-4. Configure user permissions
-
-## Directory Structure
-```
-mediastack/
-├── docker-compose.yml
-├── .env
-├── media/
-│   ├── downloads/
-│   ├── movies/
-│   └── tv/
-└── config/
-    ├── qbittorrent/
-    ├── prowlarr/
-    ├── sonarr/
-    ├── radarr/
-    ├── jellyseerr/
-    └── jellyfin/
-```
-
-## Security Notes
-- All torrent traffic is routed through NordVPN
-- Management interfaces are local-only
-- Change all default passwords
-- Consider using a reverse proxy for external access
-```
-
-### 5. `TROUBLESHOOTING.md`
-```markdown
-# Troubleshooting Guide
-
-## Common Issues
-
-### Services Won't Start
-```bash
-# Check container status
-docker ps -a
-
-# View logs for specific service
-docker-compose logs nordvpn
-docker-compose logs qbittorrent
-
-# Restart all services
-docker-compose down
-docker-compose up -d
-```
-
-### Can't Access Web Interfaces
-1. **Check your server IP**:
-   ```bash
-   hostname -I | awk '{print $1}'
-   ```
-
-2. **Verify port forwarding** (if accessing remotely)
-
-3. **Check firewall rules**:
-   ```bash
-   # Ubuntu/Debian
-   sudo ufw status
-   sudo ufw allow 8080,8989,7878,9117,5055,8096,9000/tcp
-   ```
-
-### VPN Not Working
-1. **Check NordVPN container logs**:
-   ```bash
-   docker logs nordvpn
-   ```
-
-2. **Common issues**:
-   - Using email/password instead of service credentials
-   - Wrong network range in NETWORK environment variable
-   - Firewall blocking VPN connection
-
-3. **Test VPN connection**:
-   ```bash
-   # Should show Australian IP
-   docker exec qbittorrent curl -s ifconfig.me
-   
-   # Should show your real IP
-   curl -s ifconfig.me
-   ```
-
-### Downloads Not Starting
-1. **Check qBittorrent connection** in Sonarr/Radarr settings - ensure using internal IP
-2. **Verify Prowlarr indexers** are working  
-3. **Check download permissions**:
-   ```bash
-   ls -la media/downloads/
-   # Should be owned by your user
-   ```
-
-### Jellyfin Issues
-**Sync Errors / Library Problems**:
-```bash
-# Stop services
-docker-compose down
-
-# Fix permissions
-sudo chown -R 1000:1000 ./media ./config
-
-# Recreate Jellyfin container
-docker-compose up -d jellyfin
-
-# Check Jellyfin logs
-docker logs jellyfin
-```
-
-**Connection Issues**:
-- Always use internal IP addresses when connecting services
-- Never use `localhost` or `127.0.0.1` between containers
-- Example: Use `http://192.168.0.167:8096` not `http://localhost:8096`
-
-### Permission Issues
-```bash
-# Fix ownership
-sudo chown -R $USER:$USER ./media ./config
-
-# Fix permissions
-chmod -R 755 ./media ./config
-```
-
-### Network Issues
-1. **Wrong network range**: Most home networks use `192.168.0.0/24` or `192.168.1.0/24`
-2. **Docker network conflicts**: Try restarting Docker daemon
-3. **ISP blocking**: Some ISPs block VPN traffic
-
-### Container Keeps Restarting
-```bash
-# Check specific container logs
-docker logs --tail 50 CONTAINER_NAME
-
-# Common causes:
-# - Insufficient memory
-# - Permission issues
-# - Network conflicts
-# - Invalid configuration
-```
-
-## Performance Optimization
-
-### Slow Downloads
-1. Use wired ethernet connection
-2. Increase qBittorrent connection limits
-3. Choose closer VPN servers
-4. Ensure adequate storage space
-
-### High CPU Usage
-1. Limit concurrent downloads in qBittorrent
-2. Reduce video transcoding quality in Jellyfin
-3. Monitor with `htop` or `docker stats`
-
-### Storage Management
-```bash
-# Check disk usage
-df -h
-
-# Clean up old downloads
-docker exec qbittorrent rm -rf /downloads/completed/old_stuff
-
-# Clean Docker images
-docker system prune -a
-```
-
-## Getting Help
-1. Check existing GitHub issues
-2. Include logs when reporting problems
-3. Specify your OS and Docker version
-4. Test with minimal configuration first
-```
-
-### 6. `.gitignore`
-```
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# Config directories (contains user data)
-config/
-
-# Media directories
-media/
-
-# Logs
-*.log
-logs/
-
-# Backup files
-*.backup
-*.bak
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Docker
-docker-compose.override.yml
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-```
-
-### 7. `LICENSE`
-```
-MIT License
-
-Copyright (c) 2025 [Harmanbyte]
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
